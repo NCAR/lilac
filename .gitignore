@@ -1,7 +1,5 @@
-# directories that are checked out by the tool
-cime/
-cime_config/
-components/
+#
+_build
 
 # generated local files
 *.log
