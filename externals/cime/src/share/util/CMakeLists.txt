@@ -23,6 +23,13 @@ list(APPEND share_sources
   shr_vmath_mod.F90
   shr_wv_sat_mod.F90)
 
+if(NOT ENABLE_PFUNIT)
+   list(APPEND share_sources
+      shr_abort_mod.F90
+#X#      ${CMAKE_CURRENT_BINARY_DIR}/shr_assert_mod.F90
+     )
+endif()
+
 # Build a separate list containing the mct wrapper and its dependencies. That
 # way, this list can be easily included in unit test builds that link to mct,
 # but excluded from builds that do not include mct.

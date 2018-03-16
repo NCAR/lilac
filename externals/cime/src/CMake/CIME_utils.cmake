@@ -65,16 +65,18 @@ include(genf90_utils)
 #=================================================
 # pFUnit
 #=================================================
-
-# pFUnit and its preprocessor
-find_package(pFUnit)
-
-# Preprocessor and driver handling.
-include(pFUnit_utils)
-
-# Need to add PFUNIT_INCLUDE_DIRS to the general list of include_directories
-# because we use pfunit's 'throw'.
-include_directories("${PFUNIT_INCLUDE_DIRS}")
+option(ENABLE_PFUNIT "require pfunit for build" ON)
+if (ENABLE_PFUNIT)
+  # pFUnit and its preprocessor
+  find_package(pFUnit)
+  
+  # Preprocessor and driver handling.
+  include(pFUnit_utils)
+  
+  # Need to add PFUNIT_INCLUDE_DIRS to the general list of include_directories
+  # because we use pfunit's 'throw'.
+  include_directories("${PFUNIT_INCLUDE_DIRS}")
+endif()
 
 #=================================================
 # Source list and path utilities.

@@ -46,10 +46,17 @@ LILAC_TPLS=( mct csm_share )
 # build info - eventually dynamically generate
 #
 MACHINE=`uname -n`
-COMPILER=gfortran
+OS=`uname -s`
+COMPILER=gnu
 BUILD_TYPE=debug
 THREADING=none
 GMAKE=gmake
+GMAKE_OPTS='-j 2'
+
+#CMAKE_VERBOSE=0
+CMAKE_VERBOSE=1
+
+MPIEXEC=mpiexec
 MPIFC=mpifort
 MPICC=mpicc
 MPIHEADER=/usr/local/Cellar/mpich/3.2.1_1/include
@@ -58,6 +65,7 @@ MPILIBS=/usr/local/Cellar/mpich/3.2.1_1/lib
 FC=${MPIFC}
 CC=${MPICC}
 
+export MPICC MPIFC MPILIBS MPIHEADER CC FC
 #
 # define the directories we are working with
 #
@@ -65,6 +73,8 @@ LILAC_ROOT=${PWD}
 BUILD_DIR=${LILAC_ROOT}/_build/${MACHINE}-${COMPILER}-${BUILD_TYPE}-${THREADING}
 CIME_DIR=${LILAC_ROOT}/externals/cime
 INSTALL_DIR=${BUILD_DIR}/install
+
+LILAC_CMAKE_UTIL=${LILAC_ROOT}/CMake
 
 #
 # initialize the build
@@ -94,13 +104,47 @@ cp ${MCT_SRC_DIR}/install-sh ${MCT_BUILD_DIR}/install-sh
 
 
 pushd ${MCT_BUILD_DIR}
-export MPICC MPIFC MPILIBS MPIHEADER CC FC
-${MCT_SRC_DIR}/configure --prefix ${INSTALL_DIR} SRCDIR=${MCT_SRC_DIR} --enable-debugging
-${GMAKE} -f ${MCT_SRC_DIR}/Makefile subdirs
-${GMAKE} -f ${MCT_SRC_DIR}/Makefile install
+echo "Installing mct..."
+${MCT_SRC_DIR}/configure --prefix ${INSTALL_DIR} SRCDIR=${MCT_SRC_DIR} --enable-debugging &> mct.config.log
+${GMAKE} ${GMAKE_OPTS} -f ${MCT_SRC_DIR}/Makefile subdirs &> mct.build.log
+${GMAKE} ${GMAKE_OPTS} -f ${MCT_SRC_DIR}/Makefile install &> mct.install.log
+echo "    Finished installing mct."
 popd
 
 
 #
-# csm_share
+# cime cmake based libraries
 #
+CIME_SRC_DIR=${CIME_DIR}/src/share/util
+CIME_BUILD_DIR=${BUILD_DIR}/cime
+
+CIME_CMAKE_MODULE_DIRECTORY=${CIME_DIR}/src/CMake
+
+mkdir -p ${CIME_BUILD_DIR}
+cp ${LILAC_CMAKE_UTIL}/Macros.cmake ${CIME_BUILD_DIR}
+
+pushd ${CIME_BUILD_DIR}
+echo "Installing cime cmake libraries."
+
+export COMPILER OS
+cmake \
+    -C ${LILAC_CMAKE_UTIL}/Macros.cmake \
+    -DCIMEROOT=${CIME_DIR} \
+    -DCIME_CMAKE_MODULE_DIRECTORY=${CIME_CMAKE_MODULE_DIRECTORY} \
+    -DCMAKE_BUILD_TYPE="CESM_DEBUG", \
+    -Wdev \
+    -DENABLE_PFUNIT=OFF \
+    -DENABLE_GENF90=ON \
+    -DCMAKE_PROGRAM_PATH=${CIME_DIR}/src/externals/genf90 \
+    -DCMAKE_INCLUDE_PATH=${INSTALL_DIR}/include \
+    ${LILAC_CMAKE_UTIL}/cime
+
+if [ $? != '0' ]; then
+    echo "Error running cmake for cime libraries!"
+    exit
+fi
+
+make VERBOSE=${CMAKE_VERBOSE} -j 1
+
+echo "    Finished installing cime cmake libraries."
+popd
