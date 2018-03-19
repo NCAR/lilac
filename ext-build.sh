@@ -148,13 +148,14 @@ if [ $? != '0' ]; then
     exit
 fi
 
-make VERBOSE=${CMAKE_VERBOSE} -j 1
+#X# make VERBOSE=${CMAKE_VERBOSE} -j 1
+make 
 if [ $? != '0' ]; then
     echo "Error running make to build pio1 library!"
     exit
 fi
 
-make VERBOSE=${CMAKE_VERBOSE} -j 1 install
+make install
 if [ $? != '0' ]; then
     echo "Error running make to install pio1 library!"
     exit
@@ -186,14 +187,20 @@ cmake \
     -DENABLE_GENF90=ON \
     -DCMAKE_PROGRAM_PATH=${CIME_DIR}/src/externals/genf90 \
     -DCMAKE_INCLUDE_PATH=${INSTALL_DIR}/include \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
     ${LILAC_CMAKE_UTIL}/cime
 
 if [ $? != '0' ]; then
-    echo "Error running cmake for cime libraries!"
+    echo "Error running cmake to configure cime libraries!"
     exit
 fi
 
 make VERBOSE=${CMAKE_VERBOSE} -j 1
+if [ $? != '0' ]; then
+    echo "Error running make to build cime shared libraries!"
+    exit
+fi
+
 
 echo "    Finished installing cime cmake libraries."
 popd

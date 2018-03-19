@@ -30,13 +30,13 @@ add_subdirectory(${CIMEROOT}/src/drivers/mct/shr drv_share)
 # Extract just the files we need from drv_share
 set (drv_sources_needed_base
   glc_elevclass_mod.F90
-  seq_comm_mct.F90
+#X#  seq_comm_mct.F90
   )
 extract_sources("${drv_sources_needed_base}" "${drv_sources}" drv_sources_needed)
 
 # Build libraries containing stuff needed for the unit tests.
 # Eventually, these add_library calls should probably be distributed into the correct location, rather than being in this top-level CMakeLists.txt file.
-add_library(csm_share ${share_sources} ${share_mct_sources} ${drv_sources_needed})
+add_library(csm_share ${share_sources} ${share_mct_sources} ${drv_sources_needed} ${esmf_wrf_timemgr_sources})
 declare_generated_dependencies(csm_share "${share_genf90_sources}")
 #X# add_library(esmf_wrf_timemgr ${esmf_wrf_timemgr_sources})
 #X# add_dependencies(esmf_wrf_timemgr csm_share)
