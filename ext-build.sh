@@ -74,6 +74,9 @@ BUILD_DIR=${LILAC_ROOT}/_build/${MACHINE}-${COMPILER}-${BUILD_TYPE}-${THREADING}
 CIME_DIR=${LILAC_ROOT}/externals/cime
 INSTALL_DIR=${BUILD_DIR}/install
 
+INCLUDE_DIR=${INSTALL_DIR}
+
+
 LILAC_CMAKE_UTIL=${LILAC_ROOT}/CMake
 
 #
@@ -111,6 +114,52 @@ ${GMAKE} ${GMAKE_OPTS} -f ${MCT_SRC_DIR}/Makefile install &> mct.install.log
 echo "    Finished installing mct."
 popd
 
+#
+# PIO
+#
+# NOTE(bja, 2018-03) pio is currently hard coded to version 1 because
+# that is the default when testing clm!
+#
+PIO_SRC_DIR=${CIME_DIR}/src/externals/pio1
+PIO_BUILD_DIR=${BUILD_DIR}/pio
+CMAKE_MODULE_PATH=${CIME_DIR}/src/CMake
+
+
+mkdir -p ${PIO_BUILD_DIR}
+pushd ${PIO_BUILD_DIR}
+echo "Installing pio1 library."
+cmake \
+    -C ${LILAC_CMAKE_UTIL}/Macros.cmake \
+    -DCMAKE_Fortran_FLAGS:STRING=${FFLAGS} ${INCLUDE_DIR} \
+    -DCMAKE_C_FLAGS:STRING=${CFLAGS} ${INCLUDE_DIR} \
+    -DCMAKE_CXX_FLAGS:STRING=${CXXFLAGS} ${INCLUDE_DIR} \
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+    -DGPTL_PATH:STRING=${INSTALL_SHAREDPATH} \
+    -DPIO_ENABLE_TESTS:BOOL=OFF \
+    -DWITH_PNETCDF:BOOL=OFF \
+    -DPIO_USE_MPIIO:LOGICAL=FALSE \
+    -DUSER_CMAKE_MODULE_PATH:LIST="${CIME_DIR}/src/CMake;${CIME_DIR}/src/externals/pio2/cmake" \
+    -DGENF90_PATH=${CIME_DIR}/src/externals/genf90 \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+    ${PIO_SRC_DIR}
+
+if [ $? != '0' ]; then
+    echo "Error running cmake to configure pio1 library!"
+    exit
+fi
+
+make VERBOSE=${CMAKE_VERBOSE} -j 1
+if [ $? != '0' ]; then
+    echo "Error running make to build pio1 library!"
+    exit
+fi
+
+make VERBOSE=${CMAKE_VERBOSE} -j 1 install
+if [ $? != '0' ]; then
+    echo "Error running make to install pio1 library!"
+    exit
+fi
+popd
 
 #
 # cime cmake based libraries

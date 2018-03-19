@@ -30,7 +30,8 @@ endif()
 
 # Netcdf is required
 #SET (NETCDF_FIND_COMPONENTS F90)
-FIND_PACKAGE(NetCDF "4.3.3" COMPONENTS C Fortran)
+#X# FIND_PACKAGE(NetCDF "4.3.3" COMPONENTS C Fortran)
+FIND_PACKAGE(NetCDF "4.6" COMPONENTS C Fortran)
 IF (${NetCDF_Fortran_FOUND})
   MESSAGE("Building PIO with netcdf support ")
   SET(pio_include_dirs_ ${pio_include_dirs_} ${NetCDF_Fortran_INCLUDE_DIR})
@@ -179,6 +180,11 @@ TARGET_LINK_LIBRARIES(pio ${PnetCDF_Fortran_LIBRARIES})
 TARGET_LINK_LIBRARIES(pio ${NetCDF_Fortran_LIBRARIES})
 TARGET_LINK_LIBRARIES(pio ${ADDITIONAL_LIBS})
 
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ DESTINATION include
+  FILES_MATCHING PATTERN "*.mod")
+install(TARGETS pio
+  ARCHIVE DESTINATION lib)
+      
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../unittests)
   ADD_SUBDIRECTORY(../unittests unittests)
 endif()
