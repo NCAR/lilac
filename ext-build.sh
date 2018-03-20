@@ -65,6 +65,9 @@ MPILIBS=/usr/local/Cellar/mpich/3.2.1_1/lib
 FC=${MPIFC}
 CC=${MPICC}
 
+NETCDF_INCLUDE_DIR=/usr/local/include
+NETCDF_LIB_DIR=/usr/local/lib
+
 export MPICC MPIFC MPILIBS MPIHEADER CC FC
 #
 # define the directories we are working with
@@ -186,7 +189,7 @@ cmake \
     -DENABLE_PFUNIT=OFF \
     -DENABLE_GENF90=ON \
     -DCMAKE_PROGRAM_PATH=${CIME_DIR}/src/externals/genf90 \
-    -DCMAKE_INCLUDE_PATH=${INSTALL_DIR}/include \
+    -DCMAKE_INCLUDE_PATH:LIST="${INSTALL_DIR}/include;${NETCDF_INCLUDE_DIR}" \
     -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
     ${LILAC_CMAKE_UTIL}/cime
 
