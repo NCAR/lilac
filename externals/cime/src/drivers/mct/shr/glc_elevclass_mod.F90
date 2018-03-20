@@ -9,7 +9,7 @@ module glc_elevclass_mod
 #include "shr_assert.h"
   use shr_kind_mod, only : r8 => shr_kind_r8
   use shr_sys_mod
-  use seq_comm_mct, only : logunit
+  use shr_log_mod, only : logunit => shr_log_Unit
   use shr_log_mod, only : errMsg => shr_log_errMsg
 
   implicit none
