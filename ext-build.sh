@@ -137,7 +137,7 @@ cmake \
     -DCMAKE_Fortran_FLAGS:STRING=${FFLAGS} ${INCLUDE_DIR} \
     -DCMAKE_C_FLAGS:STRING=${CFLAGS} ${INCLUDE_DIR} \
     -DCMAKE_CXX_FLAGS:STRING=${CXXFLAGS} ${INCLUDE_DIR} \
-    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF \
     -DGPTL_PATH:STRING=${INSTALL_SHAREDPATH} \
     -DPIO_ENABLE_TESTS:BOOL=OFF \
     -DWITH_PNETCDF:BOOL=OFF \
@@ -167,6 +167,52 @@ fi
 popd
 
 #
+# timing
+#
+TIMING_SRC_DIR=${CIME_DIR}/src/share/timing
+TIMING_BUILD_DIR=${BUILD_DIR}/timing
+CMAKE_MODULE_PATH=${CIME_DIR}/src/CMake
+
+
+mkdir -p ${TIMING_BUILD_DIR}
+pushd ${TIMING_BUILD_DIR}
+echo "Installing timing library."
+
+
+cmake \
+    -C ${LILAC_CMAKE_UTIL}/Macros.cmake \
+    -DCMAKE_Fortran_FLAGS:STRING=${FFLAGS} ${INCLUDE_DIR} \
+    -DCMAKE_C_FLAGS:STRING=${CFLAGS} ${INCLUDE_DIR} \
+    -DCMAKE_CXX_FLAGS:STRING=${CXXFLAGS} ${INCLUDE_DIR} \
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+    -DGPTL_PATH:STRING=${INSTALL_SHAREDPATH} \
+    -DTIMING_ENABLE_TESTS:BOOL=OFF \
+    -DUSER_CMAKE_MODULE_PATH:LIST="${CIME_DIR}/src/CMake" \
+    -DGENF90_PATH=${CIME_DIR}/src/externals/genf90 \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+    -DTIMING_DIR=${TIMING_SRC_DIR} \
+    ${LILAC_CMAKE_UTIL}/timing
+
+if [ $? != '0' ]; then
+    echo "Error running cmake to configure timing library!"
+    exit
+fi
+
+#X# make VERBOSE=${CMAKE_VERBOSE} -j 1
+make 
+if [ $? != '0' ]; then
+    echo "Error running make to build timing library!"
+    exit
+fi
+
+make install
+if [ $? != '0' ]; then
+    echo "Error running make to install timing library!"
+    exit
+fi
+popd
+
+#
 # cime cmake based libraries
 #
 CIME_SRC_DIR=${CIME_DIR}/src/share/util
@@ -182,7 +228,6 @@ echo "Installing cime cmake libraries."
 
 export COMPILER OS
 cmake \
-    -C ${LILAC_CMAKE_UTIL}/Macros.cmake \
     -DCIMEROOT=${CIME_DIR} \
     -DCIME_CMAKE_MODULE_DIRECTORY=${CIME_CMAKE_MODULE_DIRECTORY} \
     -DCMAKE_BUILD_TYPE="CESM_DEBUG", \

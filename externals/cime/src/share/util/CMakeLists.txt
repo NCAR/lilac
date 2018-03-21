@@ -25,8 +25,9 @@ list(APPEND share_sources
 
 if(NOT ENABLE_PFUNIT)
    list(APPEND share_sources
-      shr_abort_mod.F90
-#X#      ${CMAKE_CURRENT_BINARY_DIR}/shr_assert_mod.F90
+     shr_abort_mod.F90
+     shr_scam_mod.F90
+     shr_ncread_mod.F90
      )
 endif()
 

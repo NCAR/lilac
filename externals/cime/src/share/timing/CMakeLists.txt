@@ -22,3 +22,8 @@ SET(SRCS_F90  perf_mod.F90
               perf_utils.F90)
 
 ADD_LIBRARY(timing ${SRCS_F90} ${SRCS_C})
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ DESTINATION include
+  FILES_MATCHING PATTERN "*.mod")
+install(TARGETS timing
+  ARCHIVE DESTINATION lib)

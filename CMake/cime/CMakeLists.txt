@@ -36,7 +36,7 @@ extract_sources("${drv_sources_needed_base}" "${drv_sources}" drv_sources_needed
 
 # Build libraries containing stuff needed for the unit tests.
 # Eventually, these add_library calls should probably be distributed into the correct location, rather than being in this top-level CMakeLists.txt file.
-add_library(csm_share ${share_sources} ${share_mct_sources} ${drv_sources_needed} ${esmf_wrf_timemgr_sources})
+add_library(csm_share ${share_sources} ${share_mct_sources} ${share_pio_sources} ${drv_sources_needed} ${esmf_wrf_timemgr_sources})
 declare_generated_dependencies(csm_share "${share_genf90_sources}")
 #X# add_library(esmf_wrf_timemgr ${esmf_wrf_timemgr_sources})
 #X# add_dependencies(esmf_wrf_timemgr csm_share)
