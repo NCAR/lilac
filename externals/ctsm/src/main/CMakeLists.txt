@@ -1,5 +1,16 @@
-# Note that this is just used for unit testing; hence, we only need to add
-# source files that are currently used in unit tests
+# Note that files just used for unit testing should be added to the
+# initial list. All remaining files need to be added in the if not
+# enable_pfunit block.
+
+set(genf90_files
+  ncdio_pio.F90.in
+  )
+
+process_genf90_source_list("${genf90_files}" ${CMAKE_CURRENT_BINARY_DIR} clm_genf90_sources)
+
+sourcelist_to_parent(clm_genf90_sources)
+
+list(APPEND clm_sources "${clm_genf90_sources}")
 
 list(APPEND clm_sources
   ColumnType.F90
@@ -31,5 +42,11 @@ list(APPEND clm_sources
   subgridWeightsMod.F90
   surfrdUtilsMod.F90
   )
+
+if(NOT ENABLE_PFUNIT)
+  list(APPEND clm_sources
+    GetGlobalValuesMod.F90
+     )
+endif()
 
 sourcelist_to_parent(clm_sources)

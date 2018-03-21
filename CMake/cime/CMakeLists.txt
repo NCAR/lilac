@@ -53,3 +53,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 link_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ DESTINATION include
+  FILES_MATCHING PATTERN "*.mod")
+install(TARGETS csm_share
+  ARCHIVE DESTINATION lib)
+      

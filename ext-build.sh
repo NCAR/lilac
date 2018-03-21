@@ -75,6 +75,7 @@ export MPICC MPIFC MPILIBS MPIHEADER CC FC
 LILAC_ROOT=${PWD}
 BUILD_DIR=${LILAC_ROOT}/_build/${MACHINE}-${COMPILER}-${BUILD_TYPE}-${THREADING}
 CIME_DIR=${LILAC_ROOT}/externals/cime
+CTSM_DIR=${LILAC_ROOT}/externals/ctsm
 INSTALL_DIR=${BUILD_DIR}/install
 
 INCLUDE_DIR=${INSTALL_DIR}
@@ -198,12 +199,67 @@ if [ $? != '0' ]; then
     exit
 fi
 
-make VERBOSE=${CMAKE_VERBOSE} -j 1
+make -j 1
 if [ $? != '0' ]; then
     echo "Error running make to build cime shared libraries!"
     exit
 fi
 
 
+make install
+if [ $? != '0' ]; then
+    echo "Error running make to install cime shared libraries!"
+    exit
+fi
+
+
 echo "    Finished installing cime cmake libraries."
+popd
+
+
+#
+# ctsm cmake based library
+#
+
+# checkout ctsm externals if necessary
+pushd ${CTSM_DIR}
+./manage_externals/checkout_externals --externals Externals_CLM.cfg
+popd
+
+CTSM_BUILD_DIR=${BUILD_DIR}/ctsm
+
+mkdir -p ${CTSM_BUILD_DIR}
+cp ${LILAC_CMAKE_UTIL}/Macros.cmake ${CTSM_BUILD_DIR}
+
+pushd ${CTSM_BUILD_DIR}
+echo "Installing ctsm cmake libraries."
+
+cmake \
+    -C ${LILAC_CMAKE_UTIL}/Macros.cmake \
+    -DCIMEROOT=${CIME_DIR} \
+    -DCTSM_ROOT=${CTSM_DIR} \
+    -DCIME_CMAKE_MODULE_DIRECTORY=${CIME_CMAKE_MODULE_DIRECTORY} \
+    -DCMAKE_BUILD_TYPE="CESM_DEBUG", \
+    -Wdev \
+    -DENABLE_PFUNIT=OFF \
+    -DENABLE_GENF90=ON \
+    -DCMAKE_PROGRAM_PATH=${CIME_DIR}/src/externals/genf90 \
+    -DCMAKE_INCLUDE_PATH:LIST="${INSTALL_DIR}/include;${NETCDF_INCLUDE_DIR}" \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+    ${LILAC_CMAKE_UTIL}/ctsm
+
+if [ $? != '0' ]; then
+    echo "Error running cmake to configure ctsm libraries!"
+    exit
+fi
+
+make VERBOSE=${CMAKE_VERBOSE} -j 1
+# make -j 1
+if [ $? != '0' ]; then
+    echo "Error running make to build ctsm shared libraries!"
+    exit
+fi
+
+
+echo "    Finished installing ctsm cmake libraries."
 popd
