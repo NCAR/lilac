@@ -213,7 +213,7 @@ program demo_lilac_driver
     end subroutine nc_check_err
 
     !========================================================================
-    subroutine fill_in (lon, lat)
+    subroutine atm_to_lilac (lon, lat)
 
       ! input/output variables
       real, intent(in) :: lon(:)
@@ -226,92 +226,80 @@ program demo_lilac_driver
       integer           :: i_local
       ! --------------------------------------------------------
 
-
       lsize = size(lon)
       allocate(dataptr(lsize)
 
-      do i = 1, lsize
-         dataptr(i) = 30.0d0 + lat(i) *0.01d0 + lon(i) *0.01d0
-      end do
+      dataptr(:) = 30.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_z', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  10.0d0 + lat(i) *0.01d0 + lon(i) *0.01d0
-      end do
+
+      dataptr(:) =  10.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_topo', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  20.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  20.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('       Sa_u', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  40.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  40.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_v', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  280.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  280.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_ptem', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  100100.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  100100.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_pbot', dataptr)
-      do i = 1, lsize
-         dataptr(i) = 280.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) = 280.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_tbot', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  0.0004d0   !+(lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
-      end do
+
+      dataptr(:) =  0.0004d0   !+(lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
       call lilac_atm2lnd('Sa_shum', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  200.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  200.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Faxa_lwdn', dataptr)
-      do i = 1, lsize
-         !dataptr(i) =  0.0d0 +  (lat*0.01d0 + lon(i)*0.01d0)*1.0e-8
-         dataptr(i) = 0.0_d0
-      end do
+
+      !dataptr(:) =  0.0d0 +  (lat*0.01d0 + lon(:)*0.01d0)*1.0e-8
+      dataptr(:) = 0.0_d0
       call lilac_atm2lnd('Faxa_rainc', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  3.0d-8 +  (lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
-      end do
+
+      dataptr(:) =  3.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
       call lilac_atm2lnd('Faxa_rainl', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  1.0d-8 +  (lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
-      end do
+
+      dataptr(:) =  1.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
       call lilac_atm2lnd('Faxa_snowc', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  2.0d-8 +  (lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
-      end do
+
+      dataptr(:) =  2.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
       call lilac_atm2lnd('Faxa_snowl', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  100.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  100.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Faxa_swndr', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  50.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  50.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Faxa_swvdr', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  20.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  20.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Faxa_swndf', dataptr)
-      do i = 1, lsize
-         dataptr(i) =  40.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
-      end do
+
+      dataptr(:) =  40.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Faxa_swvdf', dataptr)
 
-      ! Sl_lfrin (:) =  0
-      ! Sl_t     (:) =  0
-      ! Sl_tref  (:) =  0
-      ! Sl_qref  (:) =  0
-      ! Sl_avsdr (:) =  0
-      ! Sl_anidr (:) =  0
-      ! Sl_avsdf (:) =  0
-      ! Sl_anidf (:) =  0
-      ! Sl_snowh (:) =  0
-      ! Sl_u10   (:) =  0
-      ! Sl_fv    (:) =  0
-      ! Sl_ram1  (:) =  0
-    end subroutine fill_in
+    end subroutine atm_to_lilac
+
+    !========================================================================
+    subroutine lilac_to_atm 
+      lsize = size(gindex_atm)
+      allocate(dataptr(lsize)
+
+      call lilac_lnd2atm('Sl_lfrin' , dataptr)
+      call lilac_lnd2atm('Sl_t'     , dataptr)
+      call lilac_lnd2atm('Sl_tref'  , dataptr)
+      call lilac_lnd2atm('Sl_qref'  , dataptr)
+      call lilac_lnd2atm('Sl_avsdr' , dataptr)
+      call lilac_lnd2atm('Sl_anidr' , dataptr)
+      call lilac_lnd2atm('Sl_avsdf' , dataptr)
+      call lilac_lnd2atm('Sl_anidf' , dataptr)
+      call lilac_lnd2atm('Sl_snowh' , dataptr)
+      call lilac_lnd2atm('Sl_u10'   , dataptr)
+      call lilac_lnd2atm('Sl_fv'    , dataptr)
+      call lilac_lnd2atm('Sl_ram1'  , dataptr)
+    end subroutine lilac_to_atm
 
 end program demo_lilac_driver

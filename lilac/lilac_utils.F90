@@ -1,12 +1,19 @@
 module lilac_utils
 
   implicit none
-  public
+  private
+
+  public :: gindex_atm
+  public :: this_clock
+  public :: lilac_init_atm2lnd
+  public :: lilac_init_lnd2atm
+  public :: lilac_atm2lnd
+  public :: lilac_lnd2atm
 
   ! Global index space info for atm data
   ! the HOST ATMOSPHERE is also responsible for filling in the gindex information
   ! this is used to create the distgrid for the mesh in lilac ***
-  integer, allocatable  :: gindex_atm (:)
+  integer, public, allocatable  :: gindex_atm (:)
 
   type :: atm2lnd_type
      character(len=128) :: fldname
@@ -92,6 +99,40 @@ contains
     call atm2lnd_add_fld (lnd2atm, fldname='Fall_taux' , units='unknown', lsize=lsize) 
     call atm2lnd_add_fld (lnd2atm, fldname='Fall_tauy' , units='unknown', lsize=lsize) 
   end subroutine lilac_init_lnd2atm
+
+!========================================================================
+
+  subroutine lilac_atm2lnd(fldname, dataptr)
+    character(len=*), intent(in) :: fldname
+    real*8, intent(in) :: dataptr(:)
+
+    do n = 1,size(atm2lnd)
+       if (trim(fldname) == atm2lnd(n)%fldname) then
+          if (size(dataptr) /= size(atm2lnd%dataptr)) then
+             ! call abort - TODO: what is the abort call in lilac
+          else
+             atm2lnd%dataptr(:) = dataptr(:)
+          end if
+       end if
+    end do
+  end subroutine lilac_atm2lnd
+
+!========================================================================
+
+  subroutine lilac_lnd2atm(fldname, dataptr)
+    character(len=*), intent(in) :: fldname
+    real*8, intent(out) :: dataptr(:)
+
+    do n = 1,size(lnd2atm)
+       if (trim(fldname) == lnd2atm(n)%fldname) then
+          if (size(dataptr) /= size(atm2lnd%dataptr)) then
+             ! call abort - TODO: what is the abort call in lilac
+          else
+             dataptr(:) = lnd2atm%dataptr(:)
+          end if
+       end if
+    end do
+  end subroutine lilac_lnd2atm
 
 !========================================================================
 
