@@ -5,14 +5,6 @@ module lilac_mod
   !-----------------------------------------------------------------------
 
   use ESMF
-  use lilac_utils   ,  only : atm2lnd, lnd2atm,  
-  use lilac_utils   ,  only : lnd2atm_type
-  use lilac_cpl     ,  only : cpl_atm2lnd_register, cpl_lnd2atm_register
-  use lilac_atmcap  ,  only : atmos_register
-  use lnd_comp_esmf ,  only : lnd_register !ctsm routine
-  use shr_pio_mod   ,  only : shr_pio_init1
-  use mpi           ,  only : MPI_COMM_WORLD, MPI_COMM_NULL, MPI_Init, MPI_FINALIZE, MPI_SUCCESS
-
   implicit none
 
   public :: lilac_init
@@ -44,19 +36,26 @@ contains
 
     ! --------------------------------------------------------------------------------
     ! This is called by the host atmosphere
-    ! *** NOTE - THE HOST ATMOSPHERE IS RESPONSIBLE for allocating the
-    ! memory for atm2lnd and lnd2atm pointers in lilac_utils ***
-    ! *** NOTE - the HOST ATMOSPHERE is also responsible for filling in the gindex information in
-    ! lilac_utils - this is used to create the distgrid for the mesh in lilac *** 
     ! --------------------------------------------------------------------------------
+
+    use lilac_utils   ,  only : lilac_init_lnd2atm, lilac_init_atm2lnd
+    use lilac_cpl     ,  only : cpl_atm2lnd_register, cpl_lnd2atm_register
+    use lilac_atmcap  ,  only : atmos_register
+    use lnd_comp_esmf ,  only : lnd_register !ctsm routine
+    use shr_pio_mod   ,  only : shr_pio_init1
+
+    ! input/output variables
+    integer, intent(in) :: lsize
 
     ! local variables
     type(ESMF_State)            :: importState, exportState
+    type(ESMF_VM)               :: vm
     integer                     :: rc
     character(len=ESMF_MAXSTR)  :: cname   !components or cpl names
     integer                     :: COMP_COMM
     integer                     :: ierr
     integer                     :: mytask ! mpicom size and rank
+    integer                     :: mpic   ! mpi communicator 
     integer                     :: n, i
     integer                     :: fileunit
     integer, parameter          :: debug = 1   !-- internal debug level
@@ -84,8 +83,13 @@ contains
     call ESMF_LogWrite(subname//"Initializing ESMF        ", ESMF_LOGMSG_INFO)
 
     ! Initialize pio (needed by CTSM) - TODO: this should be done within CTSM not here
-    COMP_COMM = MPI_COMM_WORLD
-    call shr_pio_init1(ncomps=1, nlfilename="drv_in", GlobalComm=COMP_COMM)  ! TODO: make the filename lilac_in
+
+    call ESMF_VMGetGlobal(vm=vm, rc=rc)
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+    call ESMF_VMGet(vm, localPet=mytask, mpiCommunicator=mpic, rc=rc)
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+
+    call shr_pio_init1(ncomps=1, nlfilename="drv_in", Global_Comm=mpic)  ! TODO: make the filename lilac_in
 
     ! Initialize atm2lnd and lnd2atm data types
     call lilac_init_atm2lnd(lsize)
@@ -96,7 +100,8 @@ contains
     !-------------------------------------------------------------------------
 
     ! Read in namelist file ...
-    if (masterproc) then
+
+    if (mytask == 0) then
        print *,  "---------------------------------------"
     end if
 
@@ -113,7 +118,7 @@ contains
     cname = " Atmosphere or Atmosphere Cap"
     atm_gcomp = ESMF_GridCompCreate(name=cname, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-    call ESMF_LogWrite(subname//"Created "//trim(gcname1)//" component", ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(subname//"Created "//trim(cname)//" component", ESMF_LOGMSG_INFO)
     print *, "Atmosphere Gridded Component Created!"
 
     !-------------------------------------------------------------------------
@@ -122,7 +127,7 @@ contains
     cname = " Land ctsm "
     lnd_gcomp = ESMF_GridCompCreate(name=cname, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-    call ESMF_LogWrite(subname//"Created "//trim(gcname2)//" component", ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(subname//"Created "//trim(cname)//" component", ESMF_LOGMSG_INFO)
     print *, "  Land (ctsm) Gridded Component Created!"
 
     !-------------------------------------------------------------------------
@@ -131,7 +136,7 @@ contains
     cname = "Coupler from atmosphere to land"
     cpl_atm2lnd_comp = ESMF_CplCompCreate(name=cname, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-    call ESMF_LogWrite(subname//"Created "//trim(ccname1)//" component", ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(subname//"Created "//trim(cname)//" component", ESMF_LOGMSG_INFO)
     print *, "1st Coupler Component (atmosphere to land ) Created!"
 
     !-------------------------------------------------------------------------

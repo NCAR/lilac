@@ -7,10 +7,7 @@ module lilac_atmcap
 
   ! !USES
   use ESMF
-  use spmdMod     , only : masterproc
-  use lilac_utils , only : gindex_atm
-  use lilac_utils , only : lnd2atm, atm2lnd
-  use clm_varctl  , only : iulog
+  use lilac_utils , only : atm2lnd, lnd2atm, gindex_atm
   implicit none
 
   include 'mpif.h'
@@ -59,8 +56,10 @@ contains
     integer, intent(out) ::  rc
 
     ! local variables
-    type (ESMF_FieldBundle)     :: c2a_fieldbundle , a2c_fieldbundle
     type(ESMF_Mesh)             :: atmos_mesh
+    type(ESMF_DistGrid)         :: atmos_distgrid
+    type(ESMF_Field)            :: field
+    type(ESMF_FieldBundle)      :: c2a_fieldbundle , a2c_fieldbundle
     character(len=ESMF_MAXSTR)  :: atmos_mesh_filepath
     integer                     :: n, i, myid
     integer                     :: mpierror, numprocs
@@ -144,12 +143,12 @@ contains
     ! create fields and add to field bundle
     do n = 1, size(lnd2atm)
        field = ESMF_FieldCreate(atmos_mesh, meshloc=ESMF_MESHLOC_ELEMENT, &
-            name=trim(lnd2atm(n)%stdname), farrayPtr=lnd2atm(n)%dataptr, rc=rc)
+            name=trim(lnd2atm(n)%fldname), farrayPtr=lnd2atm(n)%dataptr, rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
        call ESMF_FieldBundleAdd(c2a_fieldbundle, (/field/), rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-       if (if debug > 0) then
+       if (debug > 0) then
           call ESMF_FieldPrint(field,  rc=rc)
           if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
        end if
@@ -211,32 +210,5 @@ contains
     call ESMF_LogWrite(subname//"?? Are there any other thing for destroying in atmos_final??", ESMF_LOGMSG_INFO)
 
   end subroutine atmos_final
-
-!========================================================================
-
-  subroutine lilac_atmcap_addfield(fldname, dataptr, mesh, field_bundle, rc)
-
-    ! input/output variables
-    character(len=*), intent(in)    :: fldname
-    real*8                          :: dataptr(:)
-    type(ESMF_mesh), intent(in)     :: mesh
-    type(ESMF_Field), intent(inout) :: field_bundle
-    integer, intent(out)            :: rc
-
-    ! local variables
-    type(ESMF_Field) :: newfield
-    !-----------------------------------------------------
-
-    if (allocated(dataptr)) then
-       newfield = ESMF_FieldCreate(mesh, meshloc=ESMF_MESHLOC_ELEMENT, name=trim(fldname), farrayPtr=dataptr, rc=rc)
-       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-
-       call ESMF_FieldBundleAdd(field_bundle, (/newfield/), rc=rc)
-       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-    else
-       !TODO: what should be done here? just put out a warning that this is not allocated and proceed?
-    end if
-
-  end subroutine lilac_atmcap_addfield
 
 end module lilac_atmcap

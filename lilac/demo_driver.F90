@@ -15,8 +15,8 @@ program demo_lilac_driver
     !----------------------------------------------------------------------------
 
     use ESMF
-    use lilac_mod   , only : lilac_init
-    use lilac_utils , only : lilac_atm2lnd, this_clock, gindex_atm
+    use lilac_mod   , only : lilac_init, lilac_run, lilac_final
+    use lilac_utils , only : lilac_atm2lnd, lilac_lnd2atm, this_clock, gindex_atm
     use mpi         , only : MPI_COMM_WORLD, MPI_COMM_NULL, MPI_Init, MPI_FINALIZE, MPI_SUCCESS
 
     implicit none
@@ -26,7 +26,7 @@ program demo_lilac_driver
     integer                :: ierr
     real    , allocatable  :: centerCoords(:,:)
     real    , allocatable  :: lon(:), lat(:)
-    integer ,              :: mytask, ntasks
+    integer                :: mytask, ntasks
     integer                :: my_start, my_end
     integer                :: i_local, i_global
     integer                :: nlocal, nglobal
@@ -114,7 +114,7 @@ program demo_lilac_driver
     end do
 
     ! now fill in the dataptr values
-    call fill_in (lon, lat)
+    call atm_to_lilac (lon, lat)
 
     !------------------------------------------------------------------------
     ! Run lilac
@@ -220,14 +220,14 @@ program demo_lilac_driver
       real, intent(in) :: lat(:)
 
       ! local variables
-      integer           ::lsize
+      integer           :: lsize
       real*8, pointer   :: dataptr(:)
       integer           :: i
       integer           :: i_local
       ! --------------------------------------------------------
 
       lsize = size(lon)
-      allocate(dataptr(lsize)
+      allocate(dataptr(lsize))
 
       dataptr(:) = 30.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
       call lilac_atm2lnd('Sa_z', dataptr)
@@ -257,7 +257,7 @@ program demo_lilac_driver
       call lilac_atm2lnd('Faxa_lwdn', dataptr)
 
       !dataptr(:) =  0.0d0 +  (lat*0.01d0 + lon(:)*0.01d0)*1.0e-8
-      dataptr(:) = 0.0_d0
+      dataptr(:) = 0.0d0
       call lilac_atm2lnd('Faxa_rainc', dataptr)
 
       dataptr(:) =  3.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
@@ -284,9 +284,14 @@ program demo_lilac_driver
     end subroutine atm_to_lilac
 
     !========================================================================
-    subroutine lilac_to_atm 
+    subroutine lilac_to_atm ()
+
+      ! local variables
+      integer :: lsize
+      real*8, pointer  :: dataptr(:)
+
       lsize = size(gindex_atm)
-      allocate(dataptr(lsize)
+      allocate(dataptr(lsize))
 
       call lilac_lnd2atm('Sl_lfrin' , dataptr)
       call lilac_lnd2atm('Sl_t'     , dataptr)

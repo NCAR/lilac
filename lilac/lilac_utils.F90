@@ -3,7 +3,6 @@ module lilac_utils
   implicit none
   private
 
-  public :: gindex_atm
   public :: this_clock
   public :: lilac_init_atm2lnd
   public :: lilac_init_lnd2atm
@@ -21,14 +20,14 @@ module lilac_utils
      character(len=64)  :: units
      logical            :: provided_by_atm
   end type atm2lnd_type
-  type(atm2lnd_type), pointer :: atm2lnd(:)
+  type(atm2lnd_type), pointer, public :: atm2lnd(:)
 
   type :: lnd2atm_type
      character(len=128) :: fldname
      real*8, pointer    :: dataptr(:)
      character(len=64)  :: units
   end type lnd2atm_type
-  type(atm2lnd_type), pointer :: lnd2atm(:)
+  type(atm2lnd_type), pointer, public :: lnd2atm(:)
 
   type :: this_clock
      integer, pointer :: yy
@@ -83,35 +82,41 @@ contains
   subroutine lilac_init_lnd2atm(lsize)
     integer, intent(in) :: lsize
 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_lfrin'  , units='unknown', lsize=lsize)
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_t'      , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_tref'   , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_qref'   , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_avsdr'  , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_anidr'  , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_avsdf'  , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_anidf'  , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_snowh'  , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_u10'    , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_fv'     , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Sl_ram1'   , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Fall_lwup' , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Fall_taux' , units='unknown', lsize=lsize) 
-    call atm2lnd_add_fld (lnd2atm, fldname='Fall_tauy' , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_lfrin'  , units='unknown', lsize=lsize)
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_t'      , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_tref'   , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_qref'   , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_avsdr'  , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_anidr'  , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_avsdf'  , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_anidf'  , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_snowh'  , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_u10'    , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_fv'     , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Sl_ram1'   , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Fall_lwup' , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Fall_taux' , units='unknown', lsize=lsize) 
+    call lnd2atm_add_fld (lnd2atm, fldname='Fall_tauy' , units='unknown', lsize=lsize) 
   end subroutine lilac_init_lnd2atm
 
 !========================================================================
 
   subroutine lilac_atm2lnd(fldname, dataptr)
+
+    ! input/output variables
     character(len=*), intent(in) :: fldname
-    real*8, intent(in) :: dataptr(:)
+    real*8, intent(in)           :: dataptr(:)
+
+    ! local variables
+    integer :: n
+    ! --------------------------------------------
 
     do n = 1,size(atm2lnd)
        if (trim(fldname) == atm2lnd(n)%fldname) then
-          if (size(dataptr) /= size(atm2lnd%dataptr)) then
+          if (size(dataptr) /= size(atm2lnd(n)%dataptr)) then
              ! call abort - TODO: what is the abort call in lilac
           else
-             atm2lnd%dataptr(:) = dataptr(:)
+             atm2lnd(n)%dataptr(:) = dataptr(:)
           end if
        end if
     end do
@@ -120,15 +125,20 @@ contains
 !========================================================================
 
   subroutine lilac_lnd2atm(fldname, dataptr)
+    ! input/output variables
     character(len=*), intent(in) :: fldname
-    real*8, intent(out) :: dataptr(:)
+    real*8, intent(out)          :: dataptr(:)
+
+    ! local variables
+    integer :: n
+    ! --------------------------------------------
 
     do n = 1,size(lnd2atm)
        if (trim(fldname) == lnd2atm(n)%fldname) then
-          if (size(dataptr) /= size(atm2lnd%dataptr)) then
+          if (size(dataptr) /= size(lnd2atm(n)%dataptr)) then
              ! call abort - TODO: what is the abort call in lilac
           else
-             dataptr(:) = lnd2atm%dataptr(:)
+             dataptr(:) = lnd2atm(n)%dataptr(:)
           end if
        end if
     end do
@@ -150,7 +160,7 @@ contains
     ! 5) point flds => newflds
     ! ----------------------------------------------
 
-    type(atm2lnd_type)  pointer   :: flds(:)
+    type(atm2lnd_type), pointer   :: flds(:)
     character(len=*) , intent(in) :: fldname
     character(len=*) , intent(in) :: units
     logical          , intent(in) :: provided_by_atm
@@ -213,7 +223,7 @@ contains
     ! 5) point flds => newflds
     ! ----------------------------------------------
 
-    type(atm2lnd_type)  pointer   :: flds(:)
+    type(atm2lnd_type), pointer   :: flds(:)
     character(len=*) , intent(in) :: fldname
     character(len=*) , intent(in) :: units
     integer          , intent(in) :: lsize
