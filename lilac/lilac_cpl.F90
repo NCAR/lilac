@@ -7,7 +7,6 @@ module lilac_cpl
   !-----------------------------------------------------------------------
 
   use ESMF
-  use clm_varctl, only : iulog  ! TODO: need a lilac log unit - not clm's log unit
   implicit none
 
   include 'mpif.h' !TODO: remove this and use ESMF

@@ -53,6 +53,7 @@ contains
 
   subroutine lilac_init_atm2lnd(lsize)
     integer, intent(in) :: lsize
+    integer :: n
 
     ! TODO: how is the atm going to specify which fields are not provided = 
     ! should it pass an array of character strings or a colon deliminited set of fields
@@ -77,10 +78,16 @@ contains
     call atm2lnd_add_fld (atm2lnd, fldname='Faxa_swndf' , units='unknown', provided_by_atm=.true., lsize=lsize)
     call atm2lnd_add_fld (atm2lnd, fldname='Faxa_swvdf' , units='unknown', provided_by_atm=.true., lsize=lsize)
     call atm2lnd_add_fld (atm2lnd, fldname='Faxa_bcph'  , units='unknown', provided_by_atm=.true., lsize=lsize)
+
+    ! now add dataptr memory for all of the fields
+    do n = 1,size(atm2lnd)
+       allocate(atm2lnd(n)%dataptr(lsize))
+    end do
   end subroutine lilac_init_atm2lnd
 
   subroutine lilac_init_lnd2atm(lsize)
     integer, intent(in) :: lsize
+    integer :: n
 
     call lnd2atm_add_fld (lnd2atm, fldname='Sl_lfrin'  , units='unknown', lsize=lsize)
     call lnd2atm_add_fld (lnd2atm, fldname='Sl_t'      , units='unknown', lsize=lsize) 
@@ -97,6 +104,11 @@ contains
     call lnd2atm_add_fld (lnd2atm, fldname='Fall_lwup' , units='unknown', lsize=lsize) 
     call lnd2atm_add_fld (lnd2atm, fldname='Fall_taux' , units='unknown', lsize=lsize) 
     call lnd2atm_add_fld (lnd2atm, fldname='Fall_tauy' , units='unknown', lsize=lsize) 
+
+    ! now add dataptr memory for all of the fields
+    do n = 1,size(lnd2atm)
+       allocate(lnd2atm(n)%dataptr(lsize))
+    end do
   end subroutine lilac_init_lnd2atm
 
 !========================================================================
@@ -179,31 +191,37 @@ contains
     end if
     newsize = oldsize + 1
 
-    ! 1) allocate newfld to be size (one element larger than input flds)
-    allocate(newflds(newsize))
+    if (oldsize > 0) then
+       ! 1) allocate newfld to be size (one element larger than input flds)
+       allocate(newflds(newsize))
 
-    ! 2) copy flds into first N-1 elements of newflds
-    do n = 1,oldsize
-       newflds(n)%fldname    = flds(n)%fldname
-       newflds(n)%units      = flds(n)%units
-       newflds(n)%dataptr(:) = flds(n)%dataptr(:)
-       newflds(n)%provided_by_atm = flds(n)%provided_by_atm
-    end do
+       ! 2) copy flds into first N-1 elements of newflds
+       do n = 1,oldsize
+          newflds(n)%fldname    =  flds(n)%fldname
+          newflds(n)%units      =  flds(n)%units
+          newflds(n)%provided_by_atm = flds(n)%provided_by_atm
+       end do
 
-    ! 3) deallocate / nullify flds
-    if (oldsize >  0) then
-       deallocate(flds)
-       nullify(flds)
+       ! 3) deallocate / nullify flds
+       if (oldsize >  0) then
+          deallocate(flds)
+          nullify(flds)
+       end if
+
+       ! 4) point flds => new_flds
+       flds => newflds
+
+       ! 5) update flds information for new entry
+       flds(newsize)%fldname   = trim(fldname)
+       flds(newsize)%units     = trim(units)
+       flds(newsize)%provided_by_atm = provided_by_atm
+
+    else
+       allocate(flds(newsize))
+       flds(newsize)%fldname   = trim(fldname)
+       flds(newsize)%units     = trim(units)
+       flds(newsize)%provided_by_atm = provided_by_atm
     end if
-
-    ! 4) point flds => new_flds
-    flds => newflds
-
-    ! 5) now update flds information for new entry
-    flds(newsize)%fldname   = trim(fldname)
-    flds(newsize)%units     = trim(units)
-    flds(newsize)%provided_by_atm = provided_by_atm
-    allocate(flds(newsize)%dataptr(lsize))
 
   end subroutine atm2lnd_add_fld
 
@@ -248,7 +266,6 @@ contains
     do n = 1,oldsize
        newflds(n)%fldname    = flds(n)%fldname
        newflds(n)%units      = flds(n)%units
-       newflds(n)%dataptr(:) = flds(n)%dataptr(:)
     end do
 
     ! 3) deallocate / nullify flds
@@ -263,7 +280,6 @@ contains
     ! 5) now update flds information for new entry
     flds(newsize)%fldname   = trim(fldname)
     flds(newsize)%units     = trim(units)
-    allocate(flds(newsize)%dataptr(lsize))
 
   end subroutine lnd2atm_add_fld
 
