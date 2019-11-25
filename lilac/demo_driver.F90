@@ -3,165 +3,315 @@ program demo_lilac_driver
     !----------------------------------------------------------------------------
     !***  All the components are in the hierarchy seen here:
     !
-    !           main driver* (WRF)
+    !           main driver* (WRF, demo_lilac_driver)
     !               |
     !               |
     !          lilac (not a gridded component!)
-    !               |     |________________________.
-    !               |                              |
-    !           atmos cap                      land cap ____________.     ......... gridded components
-    !               |                              |                |
-    !               |                              |             river cap
-    !           oceaan (MOM, POM)?                 |                |
-    !                                              |            Mizzouroute...
-    !                                            CTSM
-    !
-    !
+    !               |     |________________________.____________.......... gridded components
+    !               |                              |                 |
+    !         ESMF lilac_atmcap            ESMF land cap     ESMF river cap
+    !                                              |                 |
+    !                                             CTSM          Mizzouroute...  
     !----------------------------------------------------------------------------
 
-    ! modules
     use ESMF
-    use lilac_mod
-    use lilac_utils , only : atm2lnd_data1d_type , lnd2atm_data1d_type, atm2lnd_data2d_type, atm2lnd_data2d_type , this_clock
-    use clm_varctl  , only : iulog
-    use spmdMod     , only : masterproc
+    use lilac_mod   , only : lilac_init
+    use lilac_utils , only : lilac_atm2lnd, this_clock, gindex_atm
+    use mpi         , only : MPI_COMM_WORLD, MPI_COMM_NULL, MPI_Init, MPI_FINALIZE, MPI_SUCCESS
+
     implicit none
 
-    ! TO DO: change the name and the derived data types
-    ! data types for 1d arrays for meshes
-    type (atm2lnd_data1d_type)                            :: atm2lnd
-    type (lnd2atm_data1d_type)                            :: lnd2atm
-
-    type (this_clock)                                     :: this_time
-
-    real    , allocatable                                 :: rand1(:)
-    real    , allocatable                                 :: rand2(:)
-
-    integer , allocatable                                 :: seed(:)
-    integer                                               :: seed_val, n
-
-    integer                                               :: begc,endc
-    integer                                               :: start_time               !-- start_time    start time
-    integer                                               :: end_time                 !-- end_time      end time
-    integer                                               :: curr_time                !-- cur_time      current time
-    integer                                               :: itime_step               !-- itime_step    counter of time steps
-    integer                                               :: g,i,k                    !-- indices
-    integer, parameter                                    :: debug = 1                !-- internal debug level
-
-    character(len=128)                                    :: fldname
-
-    character(*),parameter                                :: F01 =   "(a,i4,d26.19)"
-    character(*),parameter                                :: F02 = "('[demo_driver]',a,i5,2x,d26.19)"
+    type (this_clock)      :: this_time
+    integer                :: comp_comm
+    integer                :: ierr
+    real    , allocatable  :: centerCoords(:,:)
+    real    , allocatable  :: lon(:), lat(:)
+    integer ,              :: mytask, ntasks
+    integer                :: my_start, my_end
+    integer                :: i_local, i_global
+    integer                :: nlocal, nglobal
+    integer                :: start_time               !-- start_time    start time
+    integer                :: end_time                 !-- end_time      end time
+    integer                :: curr_time                !-- cur_time      current time
+    integer                :: itime_step               !-- itime_step    counter of time steps
+    integer                :: g,i,k                    !-- indices
+    character(len=128)     :: filename
     !------------------------------------------------------------------------
-
-    ! real atmosphere:
-    begc       = 1
-    !endc       = 6912/4/2
-    endc        = 3312/4/2/2
-    !endc       = 13824
-    !endc       = 13968
 
     start_time = 1
     end_time   = 48
-    itime_step = 1
 
-    seed_val   = 0
-    n          = endc - begc + 1
+    !-----------------------------------------------------------------------------
+    ! Initiallize MPI
+    !-----------------------------------------------------------------------------
 
+    write(*, *) "MPI initialization starts ..."
 
-    ! making 2 random arrays with a seed.
-    call random_seed   (size = n    )
-    allocate ( seed                    (n        ) ) ; seed            (:)      =  seed_val
-    call random_seed   (put  = seed )
-
-    allocate ( rand1                   (begc:endc) ) ; call random_number (rand1)
-    allocate ( rand2                   (begc:endc) ) ; call random_number (rand2)
-
-    !allocating these values from atmosphere for now!
-    allocate ( atm2lnd%Sa_z       (begc:endc) ) ; atm2lnd%Sa_z       (:) =  30.0d0
-    allocate ( atm2lnd%Sa_topo    (begc:endc) ) ; atm2lnd%Sa_topo    (:) =  10.0d0
-    allocate ( atm2lnd%Sa_u       (begc:endc) ) ; atm2lnd%Sa_u       (:) =  20.0d0
-    allocate ( atm2lnd%Sa_v       (begc:endc) ) ; atm2lnd%Sa_v       (:) =  40.0d0
-    allocate ( atm2lnd%Sa_ptem    (begc:endc) ) ; atm2lnd%Sa_ptem    (:) =  280.0d0
-    allocate ( atm2lnd%Sa_pbot    (begc:endc) ) ; atm2lnd%Sa_pbot    (:) =  100100.0d0
-    allocate ( atm2lnd%Sa_tbot    (begc:endc) ) ; atm2lnd%Sa_tbot    (:) =  280.0d0
-    allocate ( atm2lnd%Sa_shum    (begc:endc) ) ; atm2lnd%Sa_shum    (:) =  0.0004d0
-    allocate ( atm2lnd%Faxa_lwdn  (begc:endc) ) ; atm2lnd%Faxa_lwdn  (:) =  200.0d0
-    !allocate ( atm2lnd%Faxa_rainc (begc:endc) ) ; atm2lnd%Faxa_rainc (:) =  4.0d-8
-    allocate ( atm2lnd%Faxa_rainc (begc:endc) ) ; atm2lnd%Faxa_rainc (:) =  0.0d0
-    allocate ( atm2lnd%Faxa_rainl (begc:endc) ) ; atm2lnd%Faxa_rainl (:) =  3.0d-8
-    allocate ( atm2lnd%Faxa_snowc (begc:endc) ) ; atm2lnd%Faxa_snowc (:) =  1.0d-8
-    allocate ( atm2lnd%Faxa_snowl (begc:endc) ) ; atm2lnd%Faxa_snowl (:) =  2.0d-8
-    allocate ( atm2lnd%Faxa_swndr (begc:endc) ) ; atm2lnd%Faxa_swndr (:) =  100.0d0
-
-    allocate ( atm2lnd%Faxa_swvdr (begc:endc) ) ; atm2lnd%Faxa_swvdr (:) =  50.0d0
-    allocate ( atm2lnd%Faxa_swndf (begc:endc) ) ; atm2lnd%Faxa_swndf (:) =  20.0d0
-    allocate ( atm2lnd%Faxa_swvdf (begc:endc) ) ; atm2lnd%Faxa_swvdf (:) =  40.0d0
-
-
-    fldname = 'Sa_topo'
-    if (debug > 0) then
-        do i=begc, endc 
-            write (iulog,F02)'import: nstep, n, '//trim(fldname)//' = ',i, atm2lnd%Sa_topo(i)
-        enddo
+    call MPI_init(ierr)
+    if (ierr .ne. MPI_SUCCESS) then
+       print *,'Error starting MPI program. Terminating.'
+       call MPI_ABORT(MPI_COMM_WORLD, ierr)
     end if
-    !allocate ( atm2lnd%Faxa_bcph  (begc:endc) )  ; atm2lnd%Faxa_bcph (:) =  0.0d0
 
-    !endc       = 18048 ? should this be the size of the land or atmosphere???
+    comp_comm = MPI_COMM_WORLD
+    call MPI_COMM_RANK(comp_comm, mytask, ierr)
+    call MPI_COMM_SIZE(comp_comm, ntasks, ierr)
 
+    if (mytask == 0 ) then
+       print *, "MPI initialization done ..., ntasks=", ntasks
+    end if
 
-    !print *, atm2lnd%Sa_topo(1:100)
+    !-----------------------------------------------------------------------------
+    ! Read mesh file to get number of points (n_points)
+    !-----------------------------------------------------------------------------
+    filename = '/glade/p/cesmdata/cseg/inputdata/share/meshes/fv4x5_050615_polemod_ESMFmesh.nc'
+    call read_netcdf_mesh(filename, nglobal)
+    print *, "number of global points is is:", nglobal
 
+    !-----------------------------------------------------------------------------
+    ! atmosphere domain decomposition
+    !-----------------------------------------------------------------------------
 
-    allocate ( lnd2atm%Sl_lfrin (begc:endc) ) ; lnd2atm%Sl_lfrin (:) =  0
-    allocate ( lnd2atm%Sl_t     (begc:endc) ) ; lnd2atm%Sl_t     (:) =  0
-    allocate ( lnd2atm%Sl_tref  (begc:endc) ) ; lnd2atm%Sl_tref  (:) =  0
-    allocate ( lnd2atm%Sl_qref  (begc:endc) ) ; lnd2atm%Sl_qref  (:) =  0
-    allocate ( lnd2atm%Sl_avsdr (begc:endc) ) ; lnd2atm%Sl_avsdr (:) =  0
-    allocate ( lnd2atm%Sl_anidr (begc:endc) ) ; lnd2atm%Sl_anidr (:) =  0
-    allocate ( lnd2atm%Sl_avsdf (begc:endc) ) ; lnd2atm%Sl_avsdf (:) =  0
-    allocate ( lnd2atm%Sl_anidf (begc:endc) ) ; lnd2atm%Sl_anidf (:) =  0
-    allocate ( lnd2atm%Sl_snowh (begc:endc) ) ; lnd2atm%Sl_snowh (:) =  0
-    allocate ( lnd2atm%Sl_u10   (begc:endc) ) ; lnd2atm%Sl_u10   (:) =  0
-    allocate ( lnd2atm%Sl_fv    (begc:endc) ) ; lnd2atm%Sl_fv    (:) =  0
-    allocate ( lnd2atm%Sl_ram1  (begc:endc) ) ; lnd2atm%Sl_ram1  (:) =  0
+    nlocal = nglobal / ntasks
 
-    !------------------------------------------------------------------------
-    ! looping over imaginary time ....
-    !------------------------------------------------------------------------
+    my_start = nlocal*mytask + min(mytask, mod(nglobal, ntasks)) + 1
+    ! The first mod(nglobal,ntasks) of ntasks are the ones that have an extra point
+    if (mytask < mod(nglobal, ntasks)) then
+       nlocal = nlocal + 1
+    end if
+    my_end = my_start + nlocal - 1
 
-    call lilac_init     ( atm2lnd1d = atm2lnd   ,   lnd2atm1d =  lnd2atm )
-    do curr_time = start_time, end_time
-            call lilac_run      ( )
-           itime_step = itime_step + 1
+    allocate(gindex_atm(nlocal))
+
+    i_global = my_start
+    do i_local = 1, nlocal
+       gindex_atm(i_local) = i_global
+       i_global = i_global + 1
     end do
-    call lilac_final    ( )
-    call ESMF_Finalize  ( )
 
+    print *, "size gindex_atm for ", mytask,"is: ", size(gindex_atm)
+    print *, "gindex_atm for      ", mytask,"is: ", gindex_atm
 
-    !do curr_time = start_time, end_time
-    !    if  (curr_time == start_time) then
-    !        ! Initalization phase
-    !        !if (masterproc) then
-    !            print *,  "--------------------------"
-    !            print *,  " LILAC Initalization phase"
-    !            print *,  "--------------------------"
-    !        !end if
-    !        call lilac_init     ( atm2lnd1d = atm2lnd   ,   lnd2atm1d =  lnd2atm )
-    !    else if (curr_time == end_time  ) then
-    !        ! Finalization phase
-    !        call lilac_final    ( )
-    !        call ESMF_Finalize  ( )
-    !    else
-    !        call lilac_run      ( )
-    !   endif
-    !    itime_step = itime_step + 1
-    !end do
+    !------------------------------------------------------------------------
+    ! Initialize lilac
+    !------------------------------------------------------------------------
+
+    call lilac_init(nlocal)
+
+    !------------------------------------------------------------------------
+    ! Fill in atm2lnd type pointer data
+    !------------------------------------------------------------------------
+
+    ! first determine lats and lons
+    allocate(lon(nlocal))
+    allocate(lat(nlocal))
+    do i_local = 1,nlocal
+       i_global = gindex_atm(i_local)
+       lon(i) = centerCoords(1,i_global)
+       lon(i) = real(nint(lon(i))) ! rounding to nearest int
+       lat(i) = centerCoords(2,i_global)
+       lat(i) = real(nint(lat(i))) ! rounding to nearest int
+    end do
+
+    ! now fill in the dataptr values
+    call fill_in (lon, lat)
+
+    !------------------------------------------------------------------------
+    ! Run lilac
+    !------------------------------------------------------------------------
+
+    itime_step = 1
+    do curr_time = start_time, end_time
+       call lilac_run( )
+       itime_step = itime_step + 1
+    end do
+
+    !------------------------------------------------------------------------
+    ! Finalize lilac
+    !------------------------------------------------------------------------
+
+    call lilac_final( )
 
     print *,  "======================================="
     print *,  " ............. DONE ..................."
     print *,  "======================================="
 
+  !=====================
+  contains
+  !=====================
+
+    subroutine read_netcdf_mesh(filename, nglobal)
+
+      use netcdf
+      implicit none
+
+      !  input/output variables
+      character(*) , intent(in)  :: filename
+      integer      , intent(out) :: nglobal
+
+      !  local Variables
+      integer :: idfile
+      integer :: ierror
+      integer :: dimid_elem
+      integer :: dimid_coordDim
+      integer :: iddim_elem
+      integer :: iddim_coordDim
+      integer :: idvar_CenterCoords
+      integer :: nelem
+      integer :: coordDim
+      character (len=100) :: string
+      !-----------------------------------------------------------------------------
+
+      ! Open mesh file and get the idfile
+      ierror  = nf90_open ( filename, NF90_NOWRITE, idfile) ; call nc_check_err(ierror, "opening file", filename)
+
+      ! Get the dimid of  dimensions
+      ierror  = nf90_inq_dimid(idfile, 'elementCount'     , dimid_elem )
+      call nc_check_err(ierror, "inq_dimid elementCount", filename)
+      ierror  = nf90_inq_dimid(idfile, 'coordDim'         , dimid_coordDim  )
+      call nc_check_err(ierror, "coordDim", filename)
+
+      ! Inquire dimensions based on their dimeid(s)
+      ierror = nf90_inquire_dimension(idfile, dimid_elem        , string, nelem     )
+      call nc_check_err(ierror, "inq_dim elementCount", filename)
+      ierror = nf90_inquire_dimension(idfile, dimid_coordDim    , string, coordDim  )
+      call nc_check_err(ierror, "inq_dim coordDim", filename)
+
+      print *,  "======================================="
+      print *, "number of elements is : ", nelem
+      print *, "coordDim is :", coordDim
+      print *,  "======================================="
+
+      allocate (centerCoords(coordDim, nelem))
+
+      ! Get coordinate values
+      ierror = nf90_inq_varid(idfile, 'centerCoords' , idvar_centerCoords    )
+      call nc_check_err(ierror, "inq_varid centerCoords", filename)
+      ierror = nf90_get_var(idfile, idvar_CenterCoords     , centerCoords     , start=(/ 1,1/)   , count=(/ coordDim, nelem /)     )
+      call nc_check_err(ierror,"get_var CenterCoords", filename)
+
+      nglobal = nelem
+
+    end subroutine read_netcdf_mesh
+
+    !========================================================================
+    subroutine nc_check_err(ierror, description, filename)
+
+      use netcdf
+      implicit none
+
+      ! input/output variables
+      integer     , intent(in) :: ierror
+      character(*), intent(in) :: description
+      character(*), intent(in) :: filename
+
+      if (ierror /= nf90_noerr) then
+         print *,  "ERROR"
+         write (*,'(6a)') 'ERROR ', trim(description), '. NetCDF file : "', trim(filename), '". Error message:', &
+              nf90_strerror(ierror)
+      endif
+    end subroutine nc_check_err
+
+    !========================================================================
+    subroutine fill_in (lon, lat)
+
+      ! input/output variables
+      real, intent(in) :: lon(:)
+      real, intent(in) :: lat(:)
+
+      ! local variables
+      integer           ::lsize
+      real*8, pointer   :: dataptr(:)
+      integer           :: i
+      integer           :: i_local
+      ! --------------------------------------------------------
+
+
+      lsize = size(lon)
+      allocate(dataptr(lsize)
+
+      do i = 1, lsize
+         dataptr(i) = 30.0d0 + lat(i) *0.01d0 + lon(i) *0.01d0
+      end do
+      call lilac_atm2lnd('Sa_z', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  10.0d0 + lat(i) *0.01d0 + lon(i) *0.01d0
+      end do
+      call lilac_atm2lnd('Sa_topo', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  20.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('       Sa_u', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  40.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Sa_v', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  280.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Sa_ptem', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  100100.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Sa_pbot', dataptr)
+      do i = 1, lsize
+         dataptr(i) = 280.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Sa_tbot', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  0.0004d0   !+(lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
+      end do
+      call lilac_atm2lnd('Sa_shum', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  200.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Faxa_lwdn', dataptr)
+      do i = 1, lsize
+         !dataptr(i) =  0.0d0 +  (lat*0.01d0 + lon(i)*0.01d0)*1.0e-8
+         dataptr(i) = 0.0_d0
+      end do
+      call lilac_atm2lnd('Faxa_rainc', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  3.0d-8 +  (lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
+      end do
+      call lilac_atm2lnd('Faxa_rainl', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  1.0d-8 +  (lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
+      end do
+      call lilac_atm2lnd('Faxa_snowc', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  2.0d-8 +  (lat(i)*0.01d0 + lon(i)*0.01d0)*1.0e-8
+      end do
+      call lilac_atm2lnd('Faxa_snowl', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  100.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Faxa_swndr', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  50.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Faxa_swvdr', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  20.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Faxa_swndf', dataptr)
+      do i = 1, lsize
+         dataptr(i) =  40.0d0 + lat(i)*0.01d0 + lon(i)*0.01d0
+      end do
+      call lilac_atm2lnd('Faxa_swvdf', dataptr)
+
+      ! Sl_lfrin (:) =  0
+      ! Sl_t     (:) =  0
+      ! Sl_tref  (:) =  0
+      ! Sl_qref  (:) =  0
+      ! Sl_avsdr (:) =  0
+      ! Sl_anidr (:) =  0
+      ! Sl_avsdf (:) =  0
+      ! Sl_anidf (:) =  0
+      ! Sl_snowh (:) =  0
+      ! Sl_u10   (:) =  0
+      ! Sl_fv    (:) =  0
+      ! Sl_ram1  (:) =  0
+    end subroutine fill_in
 
 end program demo_lilac_driver
-
