@@ -18,6 +18,7 @@ module lilac_cpl
 
   type(ESMF_RouteHandle) :: rh_atm2lnd
   type(ESMF_RouteHandle) :: rh_lnd2atm
+  integer                :: mytask
 
   character(*), parameter :: modname =  "lilac_cpl"
 
@@ -32,11 +33,21 @@ contains
     integer, intent(out ) :: rc
 
     ! local variables
-    character(len=*     ) , parameter :: subname=trim(modname ) //' : [cpl_atm2lnd_register] '
+    type(ESMF_VM) :: vm
+    integer       :: mytask
+    character(len=*) , parameter :: subname=trim(modname ) //' : [cpl_atm2lnd_register] '
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS
-    print *, "in cpl_atm2lnd_register routine"
+
+    call ESMF_VMGetGlobal(vm=vm, rc=rc)
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+    call ESMF_VMGet(vm, localPet=mytask, rc=rc)
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+
+    if (mytask == 0) then
+       print *, "in cpl_atm2lnd_register routine"
+    end if
 
     ! Register the callback routines.
     ! Set the entry points for coupler ESMF Component methods
@@ -53,15 +64,18 @@ contains
 !======================================================================
 
   subroutine cpl_lnd2atm_register(cplcomp, rc)
-    type(ESMF_CplComp   )             :: cplcomp
-    integer, intent(out )             :: rc
+
+    type(ESMF_CplComp)    :: cplcomp
+    integer, intent(out ) :: rc
 
     ! local variables
     character(len=*     ) , parameter :: subname=trim(modname ) //' : [cpl_lnd2atm_register] '
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS
-    print *, "in cpl_lnd2atm_register routine"
+    if (mytask == 0) then
+       print *, "in cpl_lnd2atm_register routine"
+    end if
 
     ! Register the callback routines.
     ! Set the entry points for coupler ESMF Component methods
@@ -84,28 +98,62 @@ contains
     type (ESMF_State      ) :: importState
     type (ESMF_State      ) :: exportState
     type (ESMF_Clock      ) :: clock
-    type (ESMF_FieldBundle) :: import_fieldbundle, export_fieldbundle
     integer, intent(out   ) :: rc
 
     ! local variables
-    integer :: i, myid, mpierror
+    type (ESMF_FieldBundle)         :: import_fieldbundle
+    type (ESMF_FieldBundle)         :: export_fieldbundle
+    integer                         :: n
+    integer                         :: fieldcount
+    character(len=128), allocatable :: fieldlist(:)
+    character(len=128)              :: cvalue
     character(len=*), parameter :: subname=trim(modname) //': [cpl_atm2lnd_init] '
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS
-    print *, "Coupler for atmosphere to land initialize routine called"
+    if (mytask == 0) then
+       print *, "Coupler for atmosphere to land initialize routine called"
+    end if
     call ESMF_LogWrite(subname//"-----------------!", ESMF_LOGMSG_INFO)
 
-    ! TODO: don't use mpi - use ESMF
-    call MPI_Comm_rank(MPI_COMM_WORLD, myid, mpierror)
-
-    call ESMF_StateGet(importState, trim("a2c_fb"), import_fieldbundle, rc=rc)
+    call ESMF_StateGet(importState, "a2c_fb", import_fieldbundle, rc=rc)
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+    call ESMF_StateGet(exportState, "c2l_fb", export_fieldbundle, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-    call ESMF_StateGet(exportState, trim("c2l_fb"), export_fieldbundle, rc=rc)
+    ! DEBUG: write out the field bundle field names
+    call ESMF_FieldBundleGet(import_fieldbundle, fieldCount=fieldCount, rc=rc) 
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+    write(cvalue,*) fieldcount
+    call ESMF_LogWrite(subname//" a2c_fb field count = "//trim(cvalue), ESMF_LOGMSG_INFO)
+    allocate(fieldlist(fieldcount))
+    call ESMF_FieldBundleGet(import_fieldbundle, fieldNameList=fieldlist, rc=rc) 
+    do n = 1,fieldCount
+       write(cvalue,*) n 
+       call ESMF_LogWrite(subname//" a2c_fb field "//trim(cvalue)//' = '//trim(fieldlist(n)), ESMF_LOGMSG_INFO)
+    end do
+    deallocate(fieldlist)
+    if (mytask == 0) then
+       print *, ' a2c_fb field count = ',fieldcount
+    end if
 
-    if (myid == 0) then
+    call ESMF_FieldBundleGet(export_fieldbundle, fieldCount=fieldCount, rc=rc) 
+    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+    write(cvalue,*) fieldcount
+    call ESMF_LogWrite(subname//" c2f_fb field count = "//trim(cvalue), ESMF_LOGMSG_INFO)
+    allocate(fieldlist(fieldcount))
+    call ESMF_FieldBundleGet(export_fieldbundle, fieldNameList=fieldlist, rc=rc) 
+    do n = 1,fieldCount
+       write(cvalue,*) n 
+       call ESMF_LogWrite(subname//" c2f_fb field "//trim(cvalue)//' = '//trim(fieldlist(n)), ESMF_LOGMSG_INFO)
+    end do
+    deallocate(fieldlist)
+    if (mytask == 0) then
+       print *, ' c2l_fb field count = ',fieldcount
+    end if
+    ! DEBUG
+
+    if (mytask == 0) then
        print *, "PRINTING FIELDBUNDLES from atm->lnd"
        call ESMF_FieldBundlePrint (import_fieldbundle, rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
@@ -136,7 +184,10 @@ contains
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS
-    print *, "Coupler for land to atmosphere initialize routine called"
+
+    if (mytask == 0) then
+       print *, "Coupler for land to atmosphere initialize routine called"
+    end if
     call ESMF_LogWrite(subname//"-----------------!", ESMF_LOGMSG_INFO)
 
     call ESMF_StateGet(importState, "l2c_fb", import_fieldbundle, rc=rc)
@@ -168,7 +219,9 @@ contains
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS
-    print *, "Running cpl_atm2lnd_run"
+    if (mytask == 0) then
+       print *, "Running cpl_atm2lnd_run"
+    end if
     call ESMF_LogWrite(subname//"-----------------!", ESMF_LOGMSG_INFO)
 
     call ESMF_StateGet(importState, trim("a2c_fb"), import_fieldbundle, rc=rc)
@@ -201,7 +254,9 @@ contains
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS
-    print *, "Running cpl_lnd2atm_run"
+    if (mytask == 0) then
+       print *, "Running cpl_lnd2atm_run"
+    end if
     call ESMF_LogWrite(subname//"-----------------!", ESMF_LOGMSG_INFO)
 
     call ESMF_StateGet(importState, "l2c_fb", import_fieldbundle, rc=rc)
@@ -221,14 +276,16 @@ contains
 
   subroutine cpl_atm2lnd_final(cplcomp, importState, exportState, clock, rc)
 
-    type (ESMF_CplComp     )             :: cplcomp
-    type (ESMF_State       )             :: importState
-    type (ESMF_State       )             :: exportState
-    type (ESMF_Clock       )             :: clock
-    type (ESMF_FieldBundle )             :: import_fieldbundle, export_fieldbundle
-    integer, intent(out    )             :: rc
+    ! input/output variables
+    type (ESMF_CplComp)  :: cplcomp
+    type (ESMF_State)    :: importState
+    type (ESMF_State)    :: exportState
+    type (ESMF_Clock)    :: clock
+    integer, intent(out) :: rc
 
-    character(len=*        ) , parameter :: subname=trim(modname       ) //': [cpl_atm2lnd_final] '
+    ! local variables
+    type (ESMF_FieldBundle ) :: import_fieldbundle, export_fieldbundle
+    character(len=*) , parameter :: subname=trim(modname       ) //': [cpl_atm2lnd_final] '
     !---------------------------------------------------
 
     rc = ESMF_SUCCESS

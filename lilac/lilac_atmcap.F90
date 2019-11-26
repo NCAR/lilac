@@ -59,7 +59,7 @@ contains
     type(ESMF_Mesh)             :: atmos_mesh
     type(ESMF_DistGrid)         :: atmos_distgrid
     type(ESMF_Field)            :: field
-    type(ESMF_FieldBundle)      :: c2a_fieldbundle , a2c_fieldbundle
+    type(ESMF_FieldBundle)      :: c2a_fb , a2c_fb
     character(len=ESMF_MAXSTR)  :: atmos_mesh_filepath
     integer                     :: n, i, myid
     integer                     :: mpierror, numprocs
@@ -97,18 +97,13 @@ contains
 
     !-------------------------------------------------------------------------
     ! Atmosphere to Coupler (land) Fields --  atmos --> land
-    ! - Create empty field bundle -- a2c_fieldbundle
+    ! - Create empty field bundle -- a2c_fb
     ! - Create  Fields and add them to field bundle
-    ! - Add a2c_fieldbundle to state (atm2lnd_a_state)
+    ! - Add a2c_fb to state (atm2lnd_a_state)
     !-------------------------------------------------------------------------
 
-    ! *** NOTE - THE HOST ATMOSPHERE IS RESPONSIBLE for allocating the
-    ! memory for atm2lnd and lnd2atm pointers in lilac_utils ***
-    ! *** NOTE - the HOST ATMOSPHERE is also responsible for filling in the gindex information in
-    ! lilac_utils - this is used to create the distgrid for the mesh in lilac ***
-
     ! Create individual fields and add to field bundle -- a2c
-    a2c_fieldbundle = ESMF_FieldBundleCreate(name="a2c_fieldbundle", rc=rc)
+    a2c_fb = ESMF_FieldBundleCreate(name="a2c_fb", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
     ! create fields and add to field bundle
@@ -116,15 +111,15 @@ contains
        field = ESMF_FieldCreate(atmos_mesh, meshloc=ESMF_MESHLOC_ELEMENT, &
             name=trim(atm2lnd(n)%fldname), farrayPtr=atm2lnd(n)%dataptr, rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-       call ESMF_FieldBundleAdd(c2a_fieldbundle, (/field/), rc=rc)
+       call ESMF_FieldBundleAdd(a2c_fb, (/field/), rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
     end do
 
     call ESMF_LogWrite(subname//"fieldbundleadd is finished .... !", ESMF_LOGMSG_INFO)
-    print *, "!Fields to  Coupler (atmos to  land ) (a2c_fieldbundle) Field Bundle Created!"
+    print *, "!Fields to  Coupler (atmos to  land ) (a2c_fb) Field Bundle Created!"
 
     ! Add field bundle to state
-    call ESMF_StateAdd(atm2lnd_a_state, (/a2c_fieldbundle/), rc=rc)
+    call ESMF_StateAdd(atm2lnd_a_state, (/a2c_fb/), rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
     call ESMF_LogWrite(subname//"atm2lnd_a_state is filled with dummy_var field bundle!", ESMF_LOGMSG_INFO)
@@ -132,12 +127,12 @@ contains
 
     !-------------------------------------------------------------------------
     ! Coupler (land) to Atmosphere Fields --  c2a
-    ! - Create Field Bundle -- c2a_fieldbundle for because we are in atmos
+    ! - Create Field Bundle -- c2a_fb for because we are in atmos
     ! - Create  Fields and add them to field bundle
-    ! - Add c2a_fieldbundle to state (lnd2atm_a_state)
+    ! - Add c2a_fb to state (lnd2atm_a_state)
     !-------------------------------------------------------------------------
 
-    c2a_fieldbundle = ESMF_FieldBundleCreate (name="c2a_fieldbundle", rc=rc)
+    c2a_fb = ESMF_FieldBundleCreate (name="c2a_fb", rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
     ! create fields and add to field bundle
@@ -145,7 +140,7 @@ contains
        field = ESMF_FieldCreate(atmos_mesh, meshloc=ESMF_MESHLOC_ELEMENT, &
             name=trim(lnd2atm(n)%fldname), farrayPtr=lnd2atm(n)%dataptr, rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-       call ESMF_FieldBundleAdd(c2a_fieldbundle, (/field/), rc=rc)
+       call ESMF_FieldBundleAdd(c2a_fb, (/field/), rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
        if (debug > 0) then
@@ -156,7 +151,7 @@ contains
     call ESMF_LogWrite(subname//"c2a fieldbundleadd is finished .... !", ESMF_LOGMSG_INFO)
 
     ! Add field bundle to state
-    call ESMF_StateAdd(lnd2atm_a_state, (/c2a_fieldbundle/), rc=rc)
+    call ESMF_StateAdd(lnd2atm_a_state, (/c2a_fb/), rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
     ! Set Attributes needed by land
@@ -198,10 +193,10 @@ contains
     ! Initialize return code
     rc = ESMF_SUCCESS
 
-    call ESMF_StateGet(importState, "c2a_fieldbundle", import_fieldbundle, rc=rc)
+    call ESMF_StateGet(importState, "c2a_fb", import_fieldbundle, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
-    call ESMF_StateGet(exportState, "a2c_fieldbundle", export_fieldbundle, rc=rc)
+    call ESMF_StateGet(exportState, "a2c_fb", export_fieldbundle, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
 
     call ESMF_FieldBundleDestroy(import_fieldbundle, rc=rc)

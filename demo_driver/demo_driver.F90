@@ -105,8 +105,8 @@ program demo_lilac_driver
     ! first determine lats and lons
     allocate(lon(nlocal))
     allocate(lat(nlocal))
-    do i_local = 1,nlocal
-       i_global = gindex_atm(i_local)
+    do i = 1,nlocal
+       i_global = gindex_atm(i)
        lon(i) = centerCoords(1,i_global)
        lon(i) = real(nint(lon(i))) ! rounding to nearest int
        lat(i) = centerCoords(2,i_global)
@@ -220,66 +220,65 @@ program demo_lilac_driver
       real, intent(in) :: lat(:)
 
       ! local variables
-      integer           :: lsize
-      real*8, pointer   :: dataptr(:)
-      integer           :: i
-      integer           :: i_local
+      integer             :: lsize
+      real*8, allocatable :: data(:)
+      integer             :: i
+      integer             :: i_local
       ! --------------------------------------------------------
 
       lsize = size(lon)
-      allocate(dataptr(lsize))
+      allocate(data(lsize))
 
-      dataptr(:) = 30.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Sa_z', dataptr)
+      data(:) = 30.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_z', data)
 
-      dataptr(:) =  10.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Sa_topo', dataptr)
+      data(:) = 10.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_topo', data)
 
-      dataptr(:) =  20.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('       Sa_u', dataptr)
+      data(:) = 20.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_u', data)
 
-      dataptr(:) =  40.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Sa_v', dataptr)
+      data(:) = 40.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_v', data)
 
-      dataptr(:) =  280.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Sa_ptem', dataptr)
+      data(:) = 280.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_ptem', data)
 
-      dataptr(:) =  100100.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Sa_pbot', dataptr)
+      data(:) = 100100.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_pbot', data)
 
-      dataptr(:) = 280.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Sa_tbot', dataptr)
+      data(:) = 280.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Sa_tbot', data)
 
-      dataptr(:) =  0.0004d0   !+(lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
-      call lilac_atm2lnd('Sa_shum', dataptr)
+      data(:) = 0.0004d0   !+(lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
+      call lilac_atm2lnd('Sa_shum', data)
 
-      dataptr(:) =  200.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Faxa_lwdn', dataptr)
+      data(:) = 200.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Faxa_lwdn', data)
 
-      !dataptr(:) =  0.0d0 +  (lat*0.01d0 + lon(:)*0.01d0)*1.0e-8
-      dataptr(:) = 0.0d0
-      call lilac_atm2lnd('Faxa_rainc', dataptr)
+      data(:) = 0.0d0
+      call lilac_atm2lnd('Faxa_rainc', data)
 
-      dataptr(:) =  3.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
-      call lilac_atm2lnd('Faxa_rainl', dataptr)
+      data(:) = 3.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
+      call lilac_atm2lnd('Faxa_rainl', data)
 
-      dataptr(:) =  1.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
-      call lilac_atm2lnd('Faxa_snowc', dataptr)
+      data(:) = 1.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
+      call lilac_atm2lnd('Faxa_snowc', data)
 
-      dataptr(:) =  2.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
-      call lilac_atm2lnd('Faxa_snowl', dataptr)
+      data(:) = 2.0d-8 +  (lat(:)*0.01d0 + lon(:)*0.01d0)*1.0e-8
+      call lilac_atm2lnd('Faxa_snowl', data)
 
-      dataptr(:) =  100.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Faxa_swndr', dataptr)
+      data(:) = 100.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Faxa_swndr', data)
 
-      dataptr(:) =  50.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Faxa_swvdr', dataptr)
+      data(:) = 50.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Faxa_swvdr', data)
 
-      dataptr(:) =  20.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Faxa_swndf', dataptr)
+      data(:) = 20.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Faxa_swndf', data)
 
-      dataptr(:) =  40.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
-      call lilac_atm2lnd('Faxa_swvdf', dataptr)
+      data(:) = 40.0d0 + lat(:)*0.01d0 + lon(:)*0.01d0
+      call lilac_atm2lnd('Faxa_swvdf', data)
 
     end subroutine atm_to_lilac
 
@@ -288,23 +287,24 @@ program demo_lilac_driver
 
       ! local variables
       integer :: lsize
-      real*8, pointer  :: dataptr(:)
+      real*8, allocatable :: data(:)
+      ! --------------------------------------------
 
       lsize = size(gindex_atm)
-      allocate(dataptr(lsize))
+      allocate(data(lsize))
 
-      call lilac_lnd2atm('Sl_lfrin' , dataptr)
-      call lilac_lnd2atm('Sl_t'     , dataptr)
-      call lilac_lnd2atm('Sl_tref'  , dataptr)
-      call lilac_lnd2atm('Sl_qref'  , dataptr)
-      call lilac_lnd2atm('Sl_avsdr' , dataptr)
-      call lilac_lnd2atm('Sl_anidr' , dataptr)
-      call lilac_lnd2atm('Sl_avsdf' , dataptr)
-      call lilac_lnd2atm('Sl_anidf' , dataptr)
-      call lilac_lnd2atm('Sl_snowh' , dataptr)
-      call lilac_lnd2atm('Sl_u10'   , dataptr)
-      call lilac_lnd2atm('Sl_fv'    , dataptr)
-      call lilac_lnd2atm('Sl_ram1'  , dataptr)
+      call lilac_lnd2atm('Sl_lfrin' , data)
+      call lilac_lnd2atm('Sl_t'     , data)
+      call lilac_lnd2atm('Sl_tref'  , data)
+      call lilac_lnd2atm('Sl_qref'  , data)
+      call lilac_lnd2atm('Sl_avsdr' , data)
+      call lilac_lnd2atm('Sl_anidr' , data)
+      call lilac_lnd2atm('Sl_avsdf' , data)
+      call lilac_lnd2atm('Sl_anidf' , data)
+      call lilac_lnd2atm('Sl_snowh' , data)
+      call lilac_lnd2atm('Sl_u10'   , data)
+      call lilac_lnd2atm('Sl_fv'    , data)
+      call lilac_lnd2atm('Sl_ram1'  , data)
     end subroutine lilac_to_atm
 
 end program demo_lilac_driver
